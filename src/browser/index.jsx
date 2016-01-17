@@ -9,6 +9,7 @@ const Badge = ReactBootstrap.Badge;
 
 const electron = require('electron');
 const remote = electron.remote;
+const ipc = electron.ipcRenderer;
 
 const osLocale = require('os-locale');
 const fs = require('fs');
@@ -21,13 +22,24 @@ var MainPage = React.createClass({
   getInitialState: function() {
     return {
       key: 0,
-      unreadCounts: new Array(this.props.teams.length)
+      unreadCounts: new Array(this.props.teams.length),
+      unreadAtActive: new Array(this.props.teams.length)
     };
   },
+
+  componentDidMount: function() {
+    // Turn off the flag to indicate whether unread message of active channel at current tab exists.
+    ipc.on('onFocus', function() {
+      this.handleUnreadAtActiveChange(this.state.key, false);
+    }.bind(this));
+  },
+
   handleSelect: function(key) {
     this.setState({
       key: key
     });
+    // Turn off the flag to indicate whether unread message of active channel at current tab exists.
+    this.handleUnreadAtActiveChange(key, false);
   },
   handleUnreadCountChange: function(index, count) {
     var counts = this.state.unreadCounts;
@@ -35,13 +47,30 @@ var MainPage = React.createClass({
     this.setState({
       unreadCounts: counts
     });
+    this.handleUnreadCountTotalChange();
+  },
+  handleUnreadAtActiveChange: function(index, state) {
+    var unreadAtActive = this.state.unreadAtActive;
+    unreadAtActive[index] = state;
+    this.setState({
+      unreadAtActive: unreadAtActive
+    });
+    this.handleUnreadCountTotalChange();
+  },
+  handleUnreadCountTotalChange: function() {
     if (this.props.onUnreadCountChange) {
-      var c = counts.reduce(function(prev, curr) {
+      var c = this.state.unreadCounts.reduce(function(prev, curr) {
         return prev + curr;
+      }, 0);
+      this.state.unreadAtActive.forEach(function(state) {
+        if (state) {
+          c += 1;
+        }
       });
       this.props.onUnreadCountChange(c);
     }
   },
+
   visibleStyle: function(visible) {
     var visibility = visible ? 'visible' : 'hidden';
     return {
@@ -57,9 +86,16 @@ var MainPage = React.createClass({
     var thisObj = this;
     var tabs = this.props.teams.map(function(team, index) {
       var badge;
-      if (thisObj.state.unreadCounts[index] != 0) {
+      var unreadCounts = 0;
+      if (thisObj.state.unreadCounts[index] > 0) {
+        unreadCounts = thisObj.state.unreadCounts[index];
+      }
+      if (thisObj.state.unreadAtActive[index]) {
+        unreadCounts += 1;
+      }
+      if (unreadCounts > 0) {
         badge = (<Badge>
-                   { thisObj.state.unreadCounts[index] }
+                   { unreadCounts }
                  </Badge>);
       }
       return (<NavItem className="teamTabItem" id={ 'teamTabItem' + index } eventKey={ index }>
@@ -72,10 +108,13 @@ var MainPage = React.createClass({
       var handleUnreadCountChange = function(count) {
         thisObj.handleUnreadCountChange(index, count);
       };
+      var handleUnreadAtActiveChange = function() {
+        thisObj.handleUnreadAtActiveChange(index, true);
+      };
       var handleNotificationClick = function() {
         thisObj.handleSelect(index);
       }
-      return (<MattermostView id={ 'mattermostView' + index } style={ thisObj.visibleStyle(thisObj.state.key === index) } src={ team.url } onUnreadCountChange={ handleUnreadCountChange } onNotificationClick={ handleNotificationClick }
+      return (<MattermostView id={ 'mattermostView' + index } style={ thisObj.visibleStyle(thisObj.state.key === index) } src={ team.url } onUnreadCountChange={ handleUnreadCountChange } onUnreadAtActiveChange={ handleUnreadAtActiveChange } onNotificationClick={ handleNotificationClick }
               />)
     });
     return (
@@ -93,21 +132,19 @@ var MainPage = React.createClass({
   }
 });
 
-
 var MattermostView = React.createClass({
-  getInitialState: function() {
-    return {
-      unreadCount: 0
-    };
-  },
   handleUnreadCountChange: function(count) {
-    this.setState({
-      unreadCount: count
-    });
     if (this.props.onUnreadCountChange) {
       this.props.onUnreadCountChange(count);
     }
   },
+
+  handleUnreadAtActiveChange: function() {
+    if (this.props.onUnreadAtActiveChange) {
+      this.props.onUnreadAtActiveChange();
+    }
+  },
+
   componentDidMount: function() {
     var thisObj = this;
     var webview = ReactDOM.findDOMNode(this.refs.webview);
@@ -159,15 +196,22 @@ var MattermostView = React.createClass({
           break;
         case 'onNotificationClick':
           thisObj.props.onNotificationClick();
+          break;
+        case 'onActiveChannelNotify':
+          thisObj.handleUnreadAtActiveChange();
+          break;
       }
     });
-
   },
   render: function() {
     // 'disablewebsecurity' is necessary to display external images.
     // However, it allows also CSS/JavaScript.
     // So webview should use 'allowDisplayingInsecureContent' as same as BrowserWindow.
     return (<webview id={ this.props.id } className="mattermostView" style={ this.props.style } preload="webview/mattermost.js" src={ this.props.src } ref="webview"></webview>);
+  },
+
+  getUnreadCountTotal: function() {
+    return this.state.unreadCount + (this.state.unreadOfActive ? 1 : 0);
   }
 });
 

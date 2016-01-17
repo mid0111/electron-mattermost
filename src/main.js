@@ -172,4 +172,8 @@ app.on('ready', function() {
       event.preventDefault();
     }
   });
+
+  mainWindow.on('focus', function() {
+    mainWindow.webContents.send('onFocus');
+  });
 });
