@@ -9,7 +9,6 @@ const Badge = ReactBootstrap.Badge;
 
 const electron = require('electron');
 const remote = electron.remote;
-const ipc = electron.ipcRenderer;
 
 const osLocale = require('os-locale');
 const fs = require('fs');
@@ -134,16 +133,16 @@ var TabBar = React.createClass({
     var thisObj = this;
     var tabs = this.props.teams.map(function(team, index) {
       var badge;
-      var unreadCounts = 0;
+      var unreadCount = 0;
       if (thisObj.props.unreadCounts[index] > 0) {
-        unreadCounts = thisObj.props.unreadCounts[index];
+        unreadCount = thisObj.props.unreadCounts[index];
       }
       if (thisObj.props.unreadAtActive[index]) {
-        unreadCounts += 1;
+        unreadCount += 1;
       }
-      if (unreadCounts > 0) {
+      if (unreadCount > 0) {
         badge = (<Badge>
-                   { unreadCounts }
+                   { unreadCount }
                  </Badge>);
       }
       return (<NavItem className="teamTabItem" id={ 'teamTabItem' + index } eventKey={ index }>
@@ -237,10 +236,6 @@ var MattermostView = React.createClass({
     // So webview should use 'allowDisplayingInsecureContent' as same as BrowserWindow.
     return (<webview id={ this.props.id } className="mattermostView" style={ this.props.style } preload="webview/mattermost.js" src={ this.props.src } ref="webview"></webview>);
   },
-
-  getUnreadCountTotal: function() {
-    return this.state.unreadCount + (this.state.unreadOfActive ? 1 : 0);
-  }
 });
 
 var config;
