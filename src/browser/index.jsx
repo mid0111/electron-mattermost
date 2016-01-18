@@ -59,6 +59,10 @@ var MainPage = React.createClass({
     this.handleUnreadCountTotalChange();
   },
   handleUnreadAtActiveChange: function(index, state) {
+    // Never turn on the unreadAtActive flag at current focused tab.
+    if (state && this.state.key === index && remote.getCurrentWindow().isFocused()) {
+      return;
+    }
     var unreadAtActive = this.state.unreadAtActive;
     unreadAtActive[index] = state;
     this.setState({

@@ -36,12 +36,10 @@ function overrideNotificationWithBalloon() {
       options: options
     });
 
-    // Send notification to indicate whether unread message of active channel exists.
-    if (!electron.remote.getCurrentWindow().isFocused()) {
-      var activeChannel = document.querySelector('.active .sidebar-channel').text;
-      if (activeChannel === title) {
-        ipc.sendToHost('onActiveChannelNotify');
-      }
+    // Send notification event at active channel.
+    var activeChannel = document.querySelector('.active .sidebar-channel').text;
+    if (activeChannel === title) {
+      ipc.sendToHost('onActiveChannelNotify');
     }
   };
   Notification.requestPermission = function(callback) {
@@ -55,12 +53,10 @@ function overrideNotification() {
   Notification = function(title, options) {
     this.notification = new NativeNotification(title, options);
 
-    // Send notification to indicate whether unread message of active channel exists.
-    if (!electron.remote.getCurrentWindow().isFocused()) {
-      var activeChannel = document.querySelector('.active .sidebar-channel').text;
-      if (activeChannel === title) {
-        ipc.sendToHost('onActiveChannelNotify');
-      }
+    // Send notification event at active channel.
+    var activeChannel = document.querySelector('.active .sidebar-channel').text;
+    if (activeChannel === title) {
+      ipc.sendToHost('onActiveChannelNotify');
     }
   };
   Notification.requestPermission = function(callback) {
